@@ -1,0 +1,6 @@
+python-telegram-bot>=20.0
+supabase-py>=2.0.0
+python-dotenv>=1.0.0
+pytest>=7.0.0
+pytest-asyncio>=0.20
+# Lista de dependencias del proyecto (por ejemplo, python-telegram-bot, pytest, etc.)
