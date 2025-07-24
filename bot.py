@@ -220,9 +220,17 @@ def main():
     # Debe tener una prioridad más baja (número más alto).
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_command))
 
-    # Iniciar el bot
-    logger.info("Bot iniciado. Esperando mensajes...")
-    application.run_polling()
+    # Iniciar el bot en modo webhook para Render
+    import os
+    TOKEN = config.TELEGRAM_TOKEN
+    WEBHOOK_URL = "https://telegram-crm-bot.onrender.com"  # Cambia si usas dominio personalizado
+    port = int(os.environ.get("PORT", 8443))
+    logger.info(f"Bot iniciado en webhook: {WEBHOOK_URL}/{TOKEN} (puerto {port})")
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        webhook_url=f"{WEBHOOK_URL}/{TOKEN}"
+    )
 
 if __name__ == "__main__":
     try:
