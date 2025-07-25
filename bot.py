@@ -1,6 +1,6 @@
 # Punto de entrada principal del bot de Telegram.
 # Código refactorizado para usar ConversationHandler, mejorando la gestión de estado y la legibilidad.
-
+from config import TELEGRAM_TOKEN
 import logging
 from supabase import create_client, Client
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
@@ -220,17 +220,25 @@ def main():
     # Debe tener una prioridad más baja (número más alto).
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_command))
 
+from aiohttp import web
+
+async def root_handler(request):
+    return web.Response(text="OK", status=200)
+
+application = Application.builder().token(TELEGRAM_TOKEN).build()
+application.add_webhook_handler(root_handler, path="/")  # ruta GET /
+
     # Iniciar el bot en modo webhook para Render
-    import os
-    WEBHOOK_URL = "https://telegram-crm-bot.onrender.com"  # Asegúrate que sea tu URL correcta
-    port = int(os.environ.get("PORT", 10000))  # Cambiado a 10000 para coincidir con tus logs
-    logger.info(f"Bot iniciado en webhook: {WEBHOOK_URL} (puerto {port})")
-    application.run_webhook(
-        listen="0.0.0.0",
+import os
+WEBHOOK_URL = "https://telegram-crm-bot.onrender.com"  # Asegúrate que sea tu URL correcta
+port = int(os.environ.get("PORT", 10000))  # Cambiado a 10000 para coincidir con tus logs
+logger.info(f"Bot iniciado en webhook: {WEBHOOK_URL} (puerto {port})")
+application.run_webhook(
+    listen="0.0.0.0",
     port=port,
     url_path=config.TELEGRAM_TOKEN,  # Añade esta línea
-    webhook_url=f"{WEBHOOK_URL}/{config.TELEGRAM_TOKEN}",
-    secret_token='TU_SECRET_TOKEN'
+    webhook_url=f"https://telegram-crm-bot.onrender.com/{TELEGRAM_TOKEN}",
+    secret_token='7885047154:AAGh3IIOPB0bZ6yDUGuoM1UWUez9rLMRGbY'
     )
 
 if __name__ == "__main__":
