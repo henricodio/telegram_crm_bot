@@ -222,14 +222,15 @@ def main():
 
     # Iniciar el bot en modo webhook para Render
     import os
-    TOKEN = config.TELEGRAM_TOKEN
-    WEBHOOK_URL = "https://telegram-crm-bot.onrender.com"  # Cambia si usas dominio personalizado
-    port = int(os.environ.get("PORT", 8443))
-    logger.info(f"Bot iniciado en webhook: {WEBHOOK_URL}/{TOKEN} (puerto {port})")
+    WEBHOOK_URL = "https://telegram-crm-bot.onrender.com"  # Asegúrate que sea tu URL correcta
+    port = int(os.environ.get("PORT", 10000))  # Cambiado a 10000 para coincidir con tus logs
+    logger.info(f"Bot iniciado en webhook: {WEBHOOK_URL} (puerto {port})")
     application.run_webhook(
         listen="0.0.0.0",
-        port=port,
-        webhook_url=f"{WEBHOOK_URL}/{TOKEN}"
+    port=port,
+    url_path=config.TELEGRAM_TOKEN,  # Añade esta línea
+    webhook_url=f"{WEBHOOK_URL}/{config.TELEGRAM_TOKEN}",
+    secret_token='TU_SECRET_TOKEN'
     )
 
 if __name__ == "__main__":
