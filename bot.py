@@ -11,7 +11,7 @@ from telegram.ext import (
     ConversationHandler,
     CallbackQueryHandler,
 )
-from telegram.error import NetworkError, Unauthorized
+from telegram.error import NetworkError, Forbidden
 
 # --- Configuración de Logging Mejorada ---
 log_level = logging.DEBUG if os.environ.get("DEBUG", "false").lower() == "true" else logging.INFO
@@ -208,8 +208,17 @@ async def main() -> None:
         await asyncio.Future()  # Mantiene el proceso corriendo
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Maneja errores generales."""
-    logger.error(msg="Ha ocurrido un error", exc_info=context.error)
+    """Loggea los errores y envía un mensaje al usuario."""
+    logger.error("Excepción al manejar una actualización:", exc_info=context.error)
+
+    if isinstance(update, Update) and update.effective_message:
+        text = "Ocurrió un error inesperado. Por favor, intenta de nuevo más tarde o contacta al administrador."
+        if isinstance(context.error, NetworkError):
+            text = "Error de red. Por favor, verifica tu conexión e intenta de nuevo."
+        elif isinstance(context.error, Forbidden):
+            logger.warning("El bot no está autorizado (Forbidden). Probablemente fue bloqueado por el usuario.")
+            return
+        await update.effective_message.reply_text(text)
 
 if __name__ == "__main__":
     try:
