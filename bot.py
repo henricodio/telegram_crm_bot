@@ -52,8 +52,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # --- Inicialización de Clientes (Supabase) ---
-
-
+# El cliente de Supabase se importa directamente desde el módulo de configuración.
+# Esto centraliza la gestión de la conexión y las credenciales.
+from config import supabase_admin
 
 # === FUNCIONES DEL MENÚ PRINCIPAL Y NAVEGACIÓN ===
 
@@ -109,6 +110,13 @@ def main():
     
     # Se recomienda usar `Application.builder()` para más flexibilidad.
     application = Application.builder().token(config.TELEGRAM_TOKEN).build()
+
+    # Compartir el cliente de Supabase con los handlers
+    if supabase_admin:
+        application.bot_data['supabase_client'] = supabase_admin
+    else:
+        logger.error("El bot no puede funcionar sin una conexión a Supabase. Saliendo.")
+        return
 
     # --- Handlers de Conversación ---
     auth_conv_handler = ConversationHandler(
@@ -220,25 +228,22 @@ def main():
     # Debe tener una prioridad más baja (número más alto).
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_command))
 
-from aiohttp import web
+    # --- Configuración y arranque del Webhook ---
+    # Render necesita que el bot escuche en 0.0.0.0 y usa una variable de entorno PORT.
+    import os
+    port = int(os.environ.get("PORT", 8443))
+    webhook_url = f"{config.WEBHOOK_URL}/{config.TELEGRAM_TOKEN}"
 
-async def root_handler(request):
-    return web.Response(text="OK", status=200)
+    logger.info(f"Iniciando webhook en el puerto {port}")
+    logger.info(f"URL del Webhook configurada: {webhook_url}")
 
-application = Application.builder().token(TELEGRAM_TOKEN).build()
-application.add_webhook_handler(root_handler, path="/")  # ruta GET /
-
-    # Iniciar el bot en modo webhook para Render
-import os
-WEBHOOK_URL = "https://telegram-crm-bot.onrender.com"  # Asegúrate que sea tu URL correcta
-port = int(os.environ.get("PORT", 10000))  # Cambiado a 10000 para coincidir con tus logs
-logger.info(f"Bot iniciado en webhook: {WEBHOOK_URL} (puerto {port})")
-application.run_webhook(
-    listen="0.0.0.0",
-    port=port,
-    url_path=config.TELEGRAM_TOKEN,  # Añade esta línea
-    webhook_url=f"https://telegram-crm-bot.onrender.com/{TELEGRAM_TOKEN}",
-    secret_token='7885047154:AAGh3IIOPB0bZ6yDUGuoM1UWUez9rLMRGbY'
+    # Iniciar el bot en modo webhook
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        url_path=config.TELEGRAM_TOKEN,
+        webhook_url=webhook_url,
+        secret_token=config.WEBHOOK_SECRET_TOKEN
     )
 
 if __name__ == "__main__":
