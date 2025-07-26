@@ -16,7 +16,7 @@ from telegram.ext import (
 
 # Se importan los handlers y la configuración
 import config
-from handlers import client_handler, product_handler, sale_handler, auth_handler, admin_handler
+from handlers import client_handler, product_handler, sale_handler, auth_handler, admin_handler, menu_handler
 from handlers.auth_handler import (
     register_first_name, register_last_name, register_username, register_email, register_password, register_complete,
     login_email, login_password, login_complete,
@@ -60,6 +60,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     user = update.effective_user
     tenant_id = context.user_data.get('tenant_id')
+    
+    # Si el usuario ya está autenticado, mostramos el menú principal
+    if context.user_data.get('authenticated'):
+        return await menu_handler.show_main_menu(update, context)
+    
+    # Si no está autenticado, mostramos el menú de inicio de sesión
     context.user_data.clear()
     if tenant_id:
         context.user_data['tenant_id'] = tenant_id
@@ -118,6 +124,11 @@ def main():
                 MessageHandler(filters.Regex(r'^Registrarse$'), auth_handler.register_first_name),
                 MessageHandler(filters.Regex(r'^Iniciar sesión$'), auth_handler.login_email),
                 MessageHandler(filters.Regex(r'^Restablecer contraseña$'), auth_handler.start_password_reset),
+                # Manejo del menú principal
+                MessageHandler(filters.Regex(r'^👥 Gestión Clientes$'), client_handler.mostrar_submenu_clientes),
+                MessageHandler(filters.Regex(r'^📦 Gestión Productos$'), product_handler.mostrar_submenu_productos),
+                MessageHandler(filters.Regex(r'^💰 Gestión Ventas$'), sale_handler.mostrar_submenu_ventas),
+                MessageHandler(filters.Regex(r'^⚙️ Configuración$'), menu_handler.show_main_menu),  # Temporal, implementar luego
             ],
             # Flujo de Registro
             REGISTER_FIRST_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, register_first_name)],
@@ -140,9 +151,9 @@ def main():
                 MessageHandler(filters.Regex(r'^Eliminar Cliente$'), client_handler.eliminar_cliente),
             ],
             PRODUCT_SUBMENU: [
-                MessageHandler(filters.Regex(r'^Añadir Producto$'), product_handler.solicitar_nombre_producto),
-                MessageHandler(filters.Regex(r'^Consultar Productos$'), product_handler.consulta_producto),
-                MessageHandler(filters.Regex(r'^Editar Producto$'), product_handler.editar_producto),
+                MessageHandler(filters.Regex(r'^Añadir Producto$'), product_handler.anadir_producto),
+                MessageHandler(filters.Regex(r'^Consulta Producto$'), product_handler.consulta_producto),
+MessageHandler(filters.Regex(r'^Modificar Producto$'), product_handler.modificar_producto),
                 MessageHandler(filters.Regex(r'^Eliminar Producto$'), product_handler.eliminar_producto),
             ],
             # Estados de respuesta
@@ -155,11 +166,14 @@ def main():
         },
         fallbacks=[
             CommandHandler("start", start),
-            MessageHandler(filters.Regex(r'^Volver al Menú Principal$'), start),
+            MessageHandler(filters.Regex(r'^🏠 Menú Principal$'), menu_handler.show_main_menu),
+            MessageHandler(filters.Regex(r'^Volver al Menú Principal$'), menu_handler.show_main_menu),
             MessageHandler(filters.Regex(r'^Volver al Submenú de Clientes$'), client_handler.mostrar_submenu_clientes),
             MessageHandler(filters.Regex(r'^Volver al Submenú de Productos$'), product_handler.mostrar_submenu_productos),
             CommandHandler('cancel', end_conversation),
             MessageHandler(filters.Regex(r'^Cancelar$'), end_conversation),
+            # Captura cualquier otro mensaje y lo redirige al menú principal
+            MessageHandler(filters.TEXT & ~filters.COMMAND, menu_handler.handle_main_menu_selection),
         ],
         conversation_timeout=300
     )

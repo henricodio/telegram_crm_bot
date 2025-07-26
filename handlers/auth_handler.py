@@ -91,10 +91,15 @@ async def register_complete(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # === LOGIN ===
 async def login_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # MODO DESARROLLO: saltar login y entrar directo al menú principal
+    # MODO DESARROLLO: saltar login y entrar al menú principal
     await update.message.reply_text("🔓 Acceso directo habilitado para desarrollo. ¡Bienvenido al menú principal!")
-    from handlers.client_handler import mostrar_submenu_clientes
-    return await mostrar_submenu_clientes(update, context)
+    # Simulamos un login exitoso
+    context.user_data['authenticated'] = True
+    # Establecer un tenant_id de prueba para desarrollo
+    context.user_data['tenant_id'] = '1b42cbd4-cb32-4890-80d3-f4bed3141ee7'  # Usando el mismo que en .env
+    # Mostramos el menú principal
+    from handlers.menu_handler import show_main_menu
+    return await show_main_menu(update, context)
 
 async def login_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['login_email'] = update.message.text
