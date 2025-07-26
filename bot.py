@@ -1,6 +1,7 @@
 # Punto de entrada principal del bot de Telegram.
 # Código refactorizado para usar ConversationHandler, mejorando la gestión de estado y la legibilidad.
 import logging
+import asyncio
 
 import os
 from supabase import create_client, Client
@@ -100,7 +101,7 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # === Punto de entrada de la aplicación ===
 
-def main():
+async def main() -> None:
     """Arranca el bot y registra los handlers principales."""
     application = Application.builder().token(config.TELEGRAM_TOKEN).build()
 
@@ -179,16 +180,29 @@ MessageHandler(filters.Regex(r'^Modificar Producto$'), product_handler.modificar
     logger.info(f"Iniciando webhook en el puerto {port}")
     logger.info(f"URL del Webhook configurada: {webhook_url}")
 
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=port,
-        url_path=config.TELEGRAM_TOKEN,
-        webhook_url=webhook_url,
+    await application.bot.set_webhook(
+        url=webhook_url,
         secret_token=config.WEBHOOK_SECRET_TOKEN
     )
 
+    # Inicia la aplicación para escuchar en el puerto, pero sin bloquear el hilo principal
+    async with application:
+        await application.start()
+        await application.start_webhook(
+            listen="0.0.0.0",
+            port=port,
+            url_path=config.TELEGRAM_TOKEN,
+            secret_token=config.WEBHOOK_SECRET_TOKEN
+        )
+
+        # Mantiene el script corriendo indefinidamente
+        logger.info("El bot está en funcionamiento. Presiona Ctrl+C para detener.")
+        await asyncio.Future()  # Esto esperará para siempre
+
 if __name__ == "__main__":
     try:
-        main()
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("El bot se ha detenido correctamente.")
     except Exception as e:
         logger.critical("¡Error crítico en el bot!", exc_info=True)
