@@ -28,7 +28,7 @@ from states import (
     REGISTER_LAST_NAME,
     REGISTER_USERNAME,
     REGISTER_EMAIL,
-    SALE_SUBMENU_STATE,
+    SALE_SUBMENU,
     REGISTER_PASSWORD,
     LOGIN_EMAIL,
     LOGIN_PASSWORD,
@@ -157,7 +157,7 @@ def main():
                 MessageHandler(filters.Regex(r'^Modificar Producto$'), product_handler.modificar_producto),
                 MessageHandler(filters.Regex(r'^Eliminar Producto$'), product_handler.eliminar_producto),
             ],
-            SALE_SUBMENU_STATE: [
+            SALE_SUBMENU: [
                 MessageHandler(filters.Regex(r'^Añadir Venta$'), sale_handler.anadir_venta),
                 MessageHandler(filters.Regex(r'^Consulta Venta$'), sale_handler.consulta_venta),
                 MessageHandler(filters.Regex(r'^Modificar Venta$'), sale_handler.modificar_venta),

@@ -2,7 +2,7 @@
 from config import supabase_admin as supabase
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes
-from states import SALE_SUBMENU as SALE_SUBMENU_STATE
+from states import SALE_SUBMENU
 
 SALE_SUBMENU = [
     ["Añadir Venta"],
@@ -18,7 +18,7 @@ async def mostrar_submenu_ventas(update: Update, context: ContextTypes.DEFAULT_T
         "Gestión de Ventas - Selecciona una opción:",
         reply_markup=keyboard
     )
-    return SALE_SUBMENU_STATE
+    return SALE_SUBMENU
 
 # Stubs para acciones de ventas
 async def anadir_venta(update: Update, context: ContextTypes.DEFAULT_TYPE):
