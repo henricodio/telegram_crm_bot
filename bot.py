@@ -1,6 +1,5 @@
 import logging
 import os
-import asyncio
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     Application,
@@ -102,23 +101,6 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Lo siento, no he entendido esa orden. Por favor, usa los botones del menú."
     )
 
-# === Funciones de Arranque y Mantenimiento ===
-
-async def setup_webhook(application: Application, url_path: str):
-    """Borra el webhook anterior y configura el nuevo."""
-    webhook_url = f"{config.WEBHOOK_URL}/{url_path}"
-    try:
-        await application.bot.set_webhook(
-            url=webhook_url,
-            secret_token=config.WEBHOOK_SECRET_TOKEN,
-            drop_pending_updates=True  # Ignora actualizaciones antiguas
-        )
-        webhook_info = await application.bot.get_webhook_info()
-        logger.info(f"Webhook configurado en: {webhook_info.url}")
-        if not webhook_info.url:
-            logger.error("La configuración del Webhook falló, la URL está vacía.")
-    except Exception as e:
-        logger.error(f"Error al configurar el webhook: {e}", exc_info=True)
 
 async def health_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Endpoint de health check para Render."""
@@ -133,11 +115,8 @@ def main() -> None:
         return
 
     application = Application.builder().token(config.TELEGRAM_TOKEN).build()
-    url_path = "webhook"
 
-    # Ejecutar la configuración asíncrona del webhook
-    logger.info("Configurando webhook...")
-    asyncio.run(setup_webhook(application, url_path))
+    
 
     # Estados de la conversación y sus manejadores
     conv_handler = ConversationHandler(
@@ -199,12 +178,19 @@ def main() -> None:
     port = int(os.environ.get("PORT", 8443))
     logger.info(f"Iniciando servidor webhook en el puerto {port}")
 
-    # El método run_webhook es bloqueante y mantiene el bot en ejecución
+    # El método run_webhook es bloqueante y se encarga de configurar y arrancar el webhook
+    url_path = "webhook"
+    webhook_url = f"{config.WEBHOOK_URL}/{url_path}"
+
+    logger.info(f"Configurando y iniciando webhook en la URL: {webhook_url}")
+
     application.run_webhook(
         listen="0.0.0.0",
         port=port,
         url_path=url_path,
-        secret_token=config.WEBHOOK_SECRET_TOKEN
+        webhook_url=webhook_url,
+        secret_token=config.WEBHOOK_SECRET_TOKEN,
+        drop_pending_updates=True
     )
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
