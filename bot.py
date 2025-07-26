@@ -115,8 +115,8 @@ def main():
         entry_points=[CommandHandler("start", start)],
         states={
             SELECTING_ACTION: [
-                MessageHandler(filters.Regex(r'^Registrarse$'), auth_handler.register_start),
-                MessageHandler(filters.Regex(r'^Iniciar sesión$'), auth_handler.login_start),
+                MessageHandler(filters.Regex(r'^Registrarse$'), auth_handler.register_first_name),
+                MessageHandler(filters.Regex(r'^Iniciar sesión$'), auth_handler.login_email),
                 MessageHandler(filters.Regex(r'^Restablecer contraseña$'), auth_handler.start_password_reset),
             ],
             # Flujo de Registro
