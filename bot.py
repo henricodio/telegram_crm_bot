@@ -126,7 +126,7 @@ async def health_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # === Punto de entrada de la aplicación ===
 
-async def main() -> None:
+def main() -> None:
     """Arranca el bot y registra los handlers principales."""
     if not config.supabase_admin:
         logger.critical("El cliente de Supabase no se pudo inicializar. Abortando.")
@@ -135,7 +135,9 @@ async def main() -> None:
     application = Application.builder().token(config.TELEGRAM_TOKEN).build()
     url_path = "webhook"
 
-    await setup_webhook(application, url_path)
+    # Ejecutar la configuración asíncrona del webhook
+    logger.info("Configurando webhook...")
+    asyncio.run(setup_webhook(application, url_path))
 
     # Estados de la conversación y sus manejadores
     conv_handler = ConversationHandler(
@@ -192,20 +194,18 @@ async def main() -> None:
     application.add_handler(CommandHandler("listusernames", admin_handler.list_usernames))
     application.add_handler(CommandHandler("testcrud", client_handler.test_crud_supabase_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_command))
+    application.add_error_handler(error_handler)
 
     port = int(os.environ.get("PORT", 8443))
     logger.info(f"Iniciando servidor webhook en el puerto {port}")
 
-    async with application:
-        await application.start()
-        await application.start_webhook(
-            listen="0.0.0.0",
-            port=port,
-            url_path=url_path,
-            secret_token=config.WEBHOOK_SECRET_TOKEN
-        )
-        logger.info("El bot está en funcionamiento. Presiona Ctrl+C para detener.")
-        await asyncio.Future()  # Mantiene el proceso corriendo
+    # El método run_webhook es bloqueante y mantiene el bot en ejecución
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        url_path=url_path,
+        secret_token=config.WEBHOOK_SECRET_TOKEN
+    )
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Loggea los errores y envía un mensaje al usuario."""
@@ -222,7 +222,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        main()
     except (KeyboardInterrupt, SystemExit):
         logger.info("El bot se ha detenido correctamente.")
     except Exception as e:
