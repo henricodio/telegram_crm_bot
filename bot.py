@@ -134,9 +134,9 @@ def main():
             RESET_NEW_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, update_password_complete)],
             # Submenús
             CLIENT_SUBMENU: [
-                MessageHandler(filters.Regex(r'^Añadir Cliente$'), client_handler.solicitar_nombre_cliente),
-                MessageHandler(filters.Regex(r'^Consultar Clientes$'), client_handler.consulta_cliente),
-                MessageHandler(filters.Regex(r'^Editar Cliente$'), client_handler.editar_cliente),
+                MessageHandler(filters.Regex(r'^Añadir Cliente$'), client_handler.anadir_cliente),
+                MessageHandler(filters.Regex(r'^Consulta Cliente$'), client_handler.consulta_cliente),
+                MessageHandler(filters.Regex(r'^Modificar Cliente$'), client_handler.modificar_cliente),
                 MessageHandler(filters.Regex(r'^Eliminar Cliente$'), client_handler.eliminar_cliente),
             ],
             PRODUCT_SUBMENU: [
