@@ -13,6 +13,8 @@ from telegram.ext import (
     ConversationHandler,
     CallbackQueryHandler,
 )
+import aiohttp
+import aiohttp.web
 
 # Se importan los handlers de los diferentes módulos
 import config
