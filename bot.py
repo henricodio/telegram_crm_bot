@@ -1,10 +1,6 @@
-# Punto de entrada principal del bot de Telegram.
-# Código refactorizado para usar ConversationHandler, mejorando la gestión de estado y la legibilidad.
 import logging
-import asyncio
-
 import os
-from supabase import create_client, Client
+import asyncio
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     Application,
@@ -15,6 +11,21 @@ from telegram.ext import (
     ConversationHandler,
     CallbackQueryHandler,
 )
+from telegram.error import NetworkError, Unauthorized
+
+# --- Configuración de Logging Mejorada ---
+log_level = logging.DEBUG if os.environ.get("DEBUG", "false").lower() == "true" else logging.INFO
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=log_level,
+    handlers=[logging.StreamHandler()]  # Envía logs a la salida estándar para que Render los capture
+)
+logger = logging.getLogger(__name__)
+
+# Silenciar logs de librerías externas en producción
+if log_level == logging.INFO:
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("telegram.ext").setLevel(logging.WARNING)
 
 # Se importan los handlers y la configuración
 import config
@@ -44,14 +55,6 @@ from states import (
     VIEWING_CLIENT,
     VIEWING_PRODUCT,
 )
-from config import supabase_admin
-
-# --- Configuración de Logging ---
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
 
 # === FUNCIONES DEL MENÚ PRINCIPAL Y NAVEGACIÓN ===
 
@@ -99,22 +102,44 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Lo siento, no he entendido esa orden. Por favor, usa los botones del menú."
     )
 
+# === Funciones de Arranque y Mantenimiento ===
+
+async def setup_webhook(application: Application, url_path: str):
+    """Borra el webhook anterior y configura el nuevo."""
+    webhook_url = f"{config.WEBHOOK_URL}/{url_path}"
+    try:
+        await application.bot.set_webhook(
+            url=webhook_url,
+            secret_token=config.WEBHOOK_SECRET_TOKEN,
+            drop_pending_updates=True  # Ignora actualizaciones antiguas
+        )
+        webhook_info = await application.bot.get_webhook_info()
+        logger.info(f"Webhook configurado en: {webhook_info.url}")
+        if not webhook_info.url:
+            logger.error("La configuración del Webhook falló, la URL está vacía.")
+    except Exception as e:
+        logger.error(f"Error al configurar el webhook: {e}", exc_info=True)
+
+async def health_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Endpoint de health check para Render."""
+    await update.message.reply_text("Bot funcionando correctamente ✅")
+
 # === Punto de entrada de la aplicación ===
 
-def main() -> None:
+async def main() -> None:
     """Arranca el bot y registra los handlers principales."""
-    application = Application.builder().token(config.TELEGRAM_TOKEN).build()
-
-    # Compartir el cliente de Supabase con los handlers
-    if supabase_admin:
-        application.bot_data['supabase_client'] = supabase_admin
-    else:
-        logger.error("El bot no puede funcionar sin una conexión a Supabase. Saliendo.")
+    if not config.supabase_admin:
+        logger.critical("El cliente de Supabase no se pudo inicializar. Abortando.")
         return
 
-    # --- Handlers de Conversación ---
+    application = Application.builder().token(config.TELEGRAM_TOKEN).build()
+    url_path = "webhook"
+
+    await setup_webhook(application, url_path)
+
+    # Estados de la conversación y sus manejadores
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
+        entry_points=[CommandHandler('start', start)],
         states={
             SELECTING_ACTION: [
                 MessageHandler(filters.Regex(r'^Registrarse$'), auth_handler.register_first_name),
@@ -144,55 +169,52 @@ def main() -> None:
             PRODUCT_SUBMENU: [
                 MessageHandler(filters.Regex(r'^Añadir Producto$'), product_handler.anadir_producto),
                 MessageHandler(filters.Regex(r'^Consulta Producto$'), product_handler.consulta_producto),
-MessageHandler(filters.Regex(r'^Modificar Producto$'), product_handler.modificar_producto),
+                MessageHandler(filters.Regex(r'^Modificar Producto$'), product_handler.modificar_producto),
                 MessageHandler(filters.Regex(r'^Eliminar Producto$'), product_handler.eliminar_producto),
             ],
             # Estados de respuesta
             CLIENT_FILTER_RESPONSE: [CallbackQueryHandler(client_handler.mostrar_clientes_filtrados)],
             PRODUCT_FILTER_RESPONSE: [
-                 CallbackQueryHandler(product_handler.callback_filtro_producto, pattern='^product_filter_'),
-                 CallbackQueryHandler(product_handler.mostrar_productos_filtrados, pattern='^product_value_'),
+                CallbackQueryHandler(product_handler.callback_filtro_producto, pattern='^product_filter_'),
+                CallbackQueryHandler(product_handler.mostrar_productos_filtrados, pattern='^product_value_'),
             ],
             VIEWING_PRODUCT: [MessageHandler(filters.TEXT & ~filters.COMMAND, product_handler.ver_detalle_producto)],
         },
         fallbacks=[
-            CommandHandler("start", start),
-            MessageHandler(filters.Regex(r'^Volver al Menú Principal$'), start),
-            MessageHandler(filters.Regex(r'^Volver al Submenú de Clientes$'), client_handler.mostrar_submenu_clientes),
-            MessageHandler(filters.Regex(r'^Volver al Submenú de Productos$'), product_handler.mostrar_submenu_productos),
             CommandHandler('cancel', end_conversation),
             MessageHandler(filters.Regex(r'^Cancelar$'), end_conversation),
         ],
-        conversation_timeout=300
+        conversation_timeout=600
     )
 
     application.add_handler(conv_handler)
-    
-    # Handlers adicionales
+    application.add_handler(CommandHandler("health", health_check))
     application.add_handler(CommandHandler("listusernames", admin_handler.list_usernames))
     application.add_handler(CommandHandler("testcrud", client_handler.test_crud_supabase_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_command))
 
-    # --- Configuración y arranque del Webhook ---
     port = int(os.environ.get("PORT", 8443))
-    webhook_url = f"{config.WEBHOOK_URL}/{config.TELEGRAM_TOKEN}"
+    logger.info(f"Iniciando servidor webhook en el puerto {port}")
 
-    logger.info(f"Iniciando webhook en el puerto {port}")
-    logger.info(f"URL del Webhook configurada: {webhook_url}")
+    async with application:
+        await application.start()
+        await application.start_webhook(
+            listen="0.0.0.0",
+            port=port,
+            url_path=url_path,
+            secret_token=config.WEBHOOK_SECRET_TOKEN
+        )
+        logger.info("El bot está en funcionamiento. Presiona Ctrl+C para detener.")
+        await asyncio.Future()  # Mantiene el proceso corriendo
 
-    # El método run_webhook es bloqueante, por lo que el script se mantendrá en ejecución.
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=port,
-        url_path=config.TELEGRAM_TOKEN,
-        webhook_url=webhook_url,
-        secret_token=config.WEBHOOK_SECRET_TOKEN
-    )
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Maneja errores generales."""
+    logger.error(msg="Ha ocurrido un error", exc_info=context.error)
 
 if __name__ == "__main__":
     try:
-        main()
+        asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         logger.info("El bot se ha detenido correctamente.")
     except Exception as e:
-        logger.critical("¡Error crítico en el bot!", exc_info=True)
+        logger.critical(f"Error crítico al iniciar el bot: {e}", exc_info=True)

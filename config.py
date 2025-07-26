@@ -7,6 +7,23 @@ from supabase import create_client, Client
 # Cargar variables de entorno desde .env
 load_dotenv()
 
+# --- Validación de Variables de Entorno Críticas ---
+REQUIRED_VARS = [
+    "TELEGRAM_TOKEN",
+    "WEBHOOK_URL",
+    "WEBHOOK_SECRET_TOKEN",
+    "SUPABASE_URL",
+    "SUPABASE_KEY",
+    "SUPABASE_ANON_KEY",
+    "TENANT_ID",
+    "ADMIN_IDS"
+]
+
+missing_vars = [var for var in REQUIRED_VARS if not os.environ.get(var)]
+if missing_vars:
+    raise ValueError(f"ERROR: Faltan las siguientes variables de entorno: {', '.join(missing_vars)}")
+
+# --- Carga de Variables de Entorno ---
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN")
