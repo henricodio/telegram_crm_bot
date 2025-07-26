@@ -28,6 +28,7 @@ from states import (
     REGISTER_LAST_NAME,
     REGISTER_USERNAME,
     REGISTER_EMAIL,
+    SALE_SUBMENU_STATE,
     REGISTER_PASSWORD,
     LOGIN_EMAIL,
     LOGIN_PASSWORD,
@@ -153,8 +154,15 @@ def main():
             PRODUCT_SUBMENU: [
                 MessageHandler(filters.Regex(r'^Añadir Producto$'), product_handler.anadir_producto),
                 MessageHandler(filters.Regex(r'^Consulta Producto$'), product_handler.consulta_producto),
-MessageHandler(filters.Regex(r'^Modificar Producto$'), product_handler.modificar_producto),
+                MessageHandler(filters.Regex(r'^Modificar Producto$'), product_handler.modificar_producto),
                 MessageHandler(filters.Regex(r'^Eliminar Producto$'), product_handler.eliminar_producto),
+            ],
+            SALE_SUBMENU_STATE: [
+                MessageHandler(filters.Regex(r'^Añadir Venta$'), sale_handler.anadir_venta),
+                MessageHandler(filters.Regex(r'^Consulta Venta$'), sale_handler.consulta_venta),
+                MessageHandler(filters.Regex(r'^Modificar Venta$'), sale_handler.modificar_venta),
+                MessageHandler(filters.Regex(r'^Eliminar Venta$'), sale_handler.eliminar_venta),
+                MessageHandler(filters.Regex(r'^Volver Menú principal$'), menu_handler.show_main_menu),
             ],
             # Estados de respuesta
             CLIENT_FILTER_RESPONSE: [CallbackQueryHandler(client_handler.mostrar_clientes_filtrados)],
