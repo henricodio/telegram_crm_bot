@@ -1,7 +1,7 @@
 # Punto de entrada principal del bot de Telegram.
 # Código refactorizado para usar ConversationHandler, mejorando la gestión de estado y la legibilidad.
 import logging
-from aiohttp import web
+
 import os
 from supabase import create_client, Client
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
@@ -173,10 +173,6 @@ MessageHandler(filters.Regex(r'^Modificar Producto$'), product_handler.modificar
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown_command))
 
     # --- Configuración y arranque del Webhook ---
-    # Health-check para Render
-    web_app = web.Application()
-    web_app.router.add_get("/", lambda request: web.Response(text="OK"))
-
     port = int(os.environ.get("PORT", 8443))
     webhook_url = f"{config.WEBHOOK_URL}/{config.TELEGRAM_TOKEN}"
 
@@ -188,8 +184,7 @@ MessageHandler(filters.Regex(r'^Modificar Producto$'), product_handler.modificar
         port=port,
         url_path=config.TELEGRAM_TOKEN,
         webhook_url=webhook_url,
-        secret_token=config.WEBHOOK_SECRET_TOKEN,
-        web_app=web_app
+        secret_token=config.WEBHOOK_SECRET_TOKEN
     )
 
 if __name__ == "__main__":
